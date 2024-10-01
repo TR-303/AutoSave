@@ -1,0 +1,45 @@
+<!-- Plugin Configuration File. Read more: https://plugins.jetbrains.com/docs/intellij/plugin-configuration-file.html -->
+<idea-plugin>
+    <!-- Unique identifier of the plugin. It should be FQN. It cannot be changed between the plugin versions. -->
+    <id>com.github.tr303.autosave</id>
+
+    <!-- Public plugin name should be written in Title Case.
+         Guidelines: https://plugins.jetbrains.com/docs/marketplace/plugin-overview-page.html#plugin-name -->
+    <name>AutoSave</name>
+
+    <!-- A displayed Vendor name or Organization ID displayed on the Plugins Page. -->
+    <vendor email="" url="">TR-303</vendor>
+
+    <!-- Description of the plugin displayed on the Plugin Page and IDE Plugin Manager.
+         Simple HTML elements (text formatting, paragraphs, and lists) can be added inside of <![CDATA[ ]]> tag.
+         Guidelines: https://plugins.jetbrains.com/docs/marketplace/plugin-overview-page.html#plugin-description -->
+    <description>
+        <![CDATA[
+            nothingnothingnothingnothingnothingnothingnothingnothingnothing
+        ]]>
+    </description>
+
+    <!-- Product and plugin compatibility requirements.
+         Read more: https://plugins.jetbrains.com/docs/intellij/plugin-compatibility.html -->
+    <depends>com.intellij.modules.platform</depends>
+
+    <!-- Extension points defined by the plugin.
+         Read more: https://plugins.jetbrains.com/docs/intellij/plugin-extension-points.html -->
+    <extensions defaultExtensionNs="com.intellij">
+
+    </extensions>
+
+    <actions>
+
+        <group id="org.intellij.sdk.action.GroupedActions"
+               text="AutoSave History" description="View your versions of project saved by AutoSave plugin"
+               popup="true">
+            <add-to-group group-id="EditorPopupMenu" anchor="last"/>
+            <action id="com.github.tr303.autosave.ProjectHistoryAction" class="com.github.tr303.autosave.ProjectHistoryAction"
+                    text="View Project History" description="View versions of the whole project"/>
+            <action id="com.github.tr303.autosave.DirectoryHistoryAction" class="com.github.tr303.autosave.DirectoryHistoryAction"
+                    text="View Directory History" description="View versions of current Directory/File"/>
+        </group>
+
+    </actions>
+</idea-plugin>
