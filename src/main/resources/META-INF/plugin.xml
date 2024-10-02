@@ -39,6 +39,11 @@
                     text="View Project History" description="View versions of the whole project"/>
             <action id="com.github.tr303.autosave.DirectoryHistoryAction" class="com.github.tr303.autosave.DirectoryHistoryAction"
                     text="View Directory History" description="View versions of current Directory/File"/>
+            <action id="com.github.tr303.autosave.SaveVersionAction" class="com.github.tr303.autosave.SaveVersionAction"
+                    text="Save Version Snapshot" description="Save current project version snapshot">
+                <add-to-group group-id="ToolsMenu" anchor="last"/>
+                <keyboard-shortcut keymap="$default" first-keystroke="ctrl M"/>
+            </action>
         </group>
 
     </actions>
