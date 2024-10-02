@@ -35,10 +35,12 @@
                text="AutoSave History" description="View your versions of project saved by AutoSave plugin"
                popup="true">
             <add-to-group group-id="EditorPopupMenu" anchor="last"/>
-            <action id="com.github.tr303.autosave.ProjectHistoryAction" class="com.github.tr303.autosave.ProjectHistoryAction"
-                    text="View Project History" description="View versions of the whole project"/>
-            <action id="com.github.tr303.autosave.DirectoryHistoryAction" class="com.github.tr303.autosave.DirectoryHistoryAction"
-                    text="View Directory History" description="View versions of current Directory/File"/>
+            <action id="com.github.tr303.autosave.ViewVersionsAction"
+                    class="com.github.tr303.autosave.ViewVersionsAction"
+                    text="View Versions" description="View versions of the project."/>
+            <action id="com.github.tr303.autosave.SaveManuallyAction"
+                    class="com.github.tr303.autosave.SaveManuallyAction"
+                    text="Save Manually" description="Save a version manually immediately."/>
         </group>
 
     </actions>
