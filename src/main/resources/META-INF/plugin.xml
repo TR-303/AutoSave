@@ -44,4 +44,9 @@
         </group>
 
     </actions>
+    <application-components>
+        <component>
+            <implementation-class>com.github.tr303.autosave.AutoSaveScheduler</implementation-class>
+        </component>
+    </application-components>
 </idea-plugin>
