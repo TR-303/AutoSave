@@ -107,11 +107,11 @@ class TreePanel extends JPanel {
 
         setLayout(new BorderLayout());
 
-        DefaultMutableTreeNode root = new CustomTreeNode("autosave", true);
+        DefaultMutableTreeNode root = new AutoSaveFunctional.CustomTreeNode("autosave", true);
 
-        root.add(new CustomTreeNode("child1", true));
-        root.add(new CustomTreeNode("child2", false));
-        root.add(new CustomTreeNode("child3", true));
+        root.add(new AutoSaveFunctional.CustomTreeNode("child1", true));
+        root.add(new AutoSaveFunctional.CustomTreeNode("child2", false));
+        root.add(new AutoSaveFunctional.CustomTreeNode("child3", true));
 
         tree = new Tree(root);
 
@@ -130,7 +130,7 @@ class CustomTreeCellRender extends DefaultTreeCellRenderer {
     public Component getTreeCellRendererComponent(JTree tree, Object value, boolean sel, boolean expanded, boolean leaf, int row, boolean hasFocus) {
         super.getTreeCellRendererComponent(tree, value, sel, expanded, leaf, row, hasFocus);
 
-        CustomTreeNode node = (CustomTreeNode) value;
+        AutoSaveFunctional.CustomTreeNode node = (AutoSaveFunctional.CustomTreeNode) value;
         if (node.isDirectory()) this.setIcon(AllIcons.Nodes.Folder);
         else this.setIcon(AllIcons.Nodes.FilePrivate);
 

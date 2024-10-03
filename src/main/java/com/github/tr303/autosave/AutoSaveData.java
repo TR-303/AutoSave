@@ -36,6 +36,15 @@ public class AutoSaveData {
         return null;
     }
 
+    public String getFileContent(VirtualFile file) {
+        try {
+            return VfsUtil.loadText(file);
+        } catch (IOException e) {
+            log.error(e);
+            return null;
+        }
+    }
+
     // 得到某个哈希值对应object的原始内容String
     String getObjectContentByHash(String hash) {
         String objectDir = project.getBasePath() + "/.autosave/objects/" + hash.substring(0, 2);
@@ -52,6 +61,7 @@ public class AutoSaveData {
         return null;
     }
 
+    // 以某个哈希值保存object内容
     void saveObjectWithHash(String content, String hash) {
         String objectDir = project.getBasePath() + "/.autosave/objects/" + hash.substring(0, 2);
         String objectFileName = hash.substring(2);
@@ -71,15 +81,15 @@ public class AutoSaveData {
 
     // 判断原始内容String描述的是目录还是文件
     Boolean isDirectory(String content) {
-        if (content.startsWith("FIL\0")) return false;
-        if (content.startsWith("DIR\0")) return true;
+        if (content.startsWith("FIL@")) return false;
+        if (content.startsWith("DIR@")) return true;
         return null;
     }
 
     // 添加FIL或DIR前缀
-    String addPrefix(String content, boolean isDirectory) {
-        if (isDirectory) return "DIR\0" + content;
-        else return "FIL\0" + content;
+    String addPrefix(String content, String name, boolean isDirectory) {
+        if (isDirectory) return "DIR@" + name + '\0' + content;
+        else return "FIL@" + name + '\0' + content;
     }
 
     // SHA256一个String
@@ -96,7 +106,7 @@ public class AutoSaveData {
                 hexString.append(hex);
             }
 
-            return hexString.toString(); // 返回SHA-256哈希值
+            return hexString.toString();
         } catch (NoSuchAlgorithmException e) {
             log.error(e);
         }
