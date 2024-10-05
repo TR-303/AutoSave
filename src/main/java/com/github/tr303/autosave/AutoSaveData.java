@@ -1,5 +1,6 @@
 package com.github.tr303.autosave;
 
+import com.intellij.openapi.command.WriteCommandAction;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.vfs.VfsUtil;
@@ -10,6 +11,7 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 public class AutoSaveData {
     private final Project project;
@@ -20,7 +22,7 @@ public class AutoSaveData {
     }
 
     // 得到VERSIONS文件的内容
-    String getVersionsFileContent() {
+    public String getVersionsFileContent() {
         String autosaveDirPath = project.getBasePath() + "/.autosave";
         VirtualFile autosaveDir = VfsUtil.findFileByIoFile(new File(autosaveDirPath), true);
 
@@ -30,6 +32,30 @@ public class AutoSaveData {
                 return VfsUtil.loadText(versionsFile);
             } catch (IOException e) {
                 log.error(e);
+            }
+        }
+
+        return null;
+    }
+
+    public Boolean saveVersionFileContent(String content) {
+        String autosaveDirPath = project.getBasePath() + "/.autosave";
+        VirtualFile autosaveDir = VfsUtil.findFileByIoFile(new File(autosaveDirPath), true);
+
+        if (autosaveDir != null) {
+            VirtualFile versionsFile = autosaveDir.findChild("VERSIONS");
+            if (versionsFile != null) {
+                AtomicBoolean success = new AtomicBoolean(false);
+                WriteCommandAction.runWriteCommandAction(project, () -> {
+                    try {
+                        versionsFile.setBinaryContent(content.getBytes(StandardCharsets.UTF_8));
+                        success.set(true); // 如果操作成功，设置为true
+                    } catch (IOException e) {
+                        log.error(e);
+                        success.set(false); // 如果操作失败，设置为false
+                    }
+                });
+                return success.get();
             }
         }
 
@@ -66,17 +92,19 @@ public class AutoSaveData {
         String objectDir = project.getBasePath() + "/.autosave/objects/" + hash.substring(0, 2);
         String objectFileName = hash.substring(2);
 
-        try {
-            VirtualFile objectDirFile = VfsUtil.createDirectoryIfMissing(objectDir);
+        WriteCommandAction.runWriteCommandAction(project, () -> {
+            try {
+                VirtualFile objectDirFile = VfsUtil.createDirectoryIfMissing(objectDir);
 
-            if (objectDirFile != null && objectDirFile.findChild(objectFileName) == null) {
-                VirtualFile objectFile = objectDirFile.createChildData(this, objectFileName);
-                objectFile.setBinaryContent(content.getBytes(StandardCharsets.UTF_8));
+                if (objectDirFile != null && objectDirFile.findChild(objectFileName) == null) {
+                    VirtualFile objectFile = objectDirFile.createChildData(this, objectFileName);
+                    objectFile.setBinaryContent(content.getBytes(StandardCharsets.UTF_8));
+                }
+
+            } catch (IOException e) {
+                log.error(e);
             }
-
-        } catch (IOException e) {
-            log.error(e);
-        }
+        });
     }
 
     // 判断原始内容String描述的是目录还是文件
