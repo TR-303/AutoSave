@@ -16,6 +16,9 @@ import java.awt.*;
 import java.util.ArrayList;
 import java.util.Date;
 
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
+
 // 插件界面窗体
 public class AutoSaveWindow extends DialogWrapper {
     private AutoSaveFunctional ASF;
@@ -63,9 +66,8 @@ class VersionPanel extends JPanel {
         JPanel itemContainer = new JPanel();
         itemContainer.setLayout(new BoxLayout(itemContainer, BoxLayout.Y_AXIS)); // 纵向排列
 
-
         for (int i = 1; i <= 20; ++i) {
-            VersionItem item = new VersionItem("Version " + i, new Date());
+            VersionItem item = new VersionItem("Version " + i, new Date(), this); // 传入父面板引用
             items.add(item);
             itemContainer.add(item);
         }
@@ -76,11 +78,26 @@ class VersionPanel extends JPanel {
         scrollPane.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_ALWAYS);
         add(scrollPane, BorderLayout.CENTER);
     }
+
+    public void itemClicked(VersionItem clickedItem) {
+        for (VersionItem item : items) {
+            if (item != clickedItem) {
+                item.mark(false); // 取消标记其他项
+            }
+        }
+        clickedItem.mark(true); // 标记被点击的项
+    }
 }
 
-// 左面板的item
+//左面板的item
 class VersionItem extends JPanel {
-    public VersionItem(String name, Date date) {
+    public boolean isSelected;
+    private VersionPanel parentPanel; // 引用父面板
+
+    public VersionItem(String name, Date date, VersionPanel parentPanel) {
+        this.parentPanel = parentPanel; // 初始化父面板
+        isSelected = false;
+
         setLayout(new BoxLayout(this, BoxLayout.Y_AXIS));
 
         JLabel nameLabel = new JLabel(name);
@@ -95,13 +112,37 @@ class VersionItem extends JPanel {
         add(timeLabel);
 
         setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
+
+        // 添加鼠标监听器
+        addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseEntered(MouseEvent e) {
+                if (!isSelected)
+                    setBackground(Color.GRAY);
+            }
+
+            @Override
+            public void mouseExited(MouseEvent e) {
+                if (!isSelected)
+                    setBackground(UIManager.getColor("Panel.background"));
+            }
+
+            @Override
+            public void mouseClicked(MouseEvent e) {
+                parentPanel.itemClicked(VersionItem.this); // 通知父面板该项被点击
+            }
+        });
     }
 
     public void mark(boolean selected) {
-        if (selected) setBackground(UIManager.getColor("Selection.background"));
-        else setBackground(UIManager.getColor("Panel.background"));
+        if (selected) {
+            setBackground(Color.YELLOW);
+        } else {
+            setBackground(UIManager.getColor("Panel.background"));
+        }
         revalidate();
         repaint();
+        isSelected = selected;
     }
 }
 
