@@ -11,6 +11,7 @@ import kotlin.coroutines.Continuation;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
+import java.io.File;
 import java.io.IOException;
 
 public class AutoSaveStartUpActivity implements ProjectActivity {
@@ -20,10 +21,26 @@ public class AutoSaveStartUpActivity implements ProjectActivity {
         WriteCommandAction.runWriteCommandAction(project, () -> {
             try {
                 VirtualFile autosaveDir = VfsUtil.createDirectoryIfMissing(projectPath + "/.autosave");
-                VirtualFile objectsDir = VfsUtil.createDirectoryIfMissing(autosaveDir, "objects");
                 if (autosaveDir != null) {
+                    String command = "attrib +h " + autosaveDir.getPath();
+                    ProcessBuilder processBuilder = new ProcessBuilder("cmd.exe", "/c", command);
+                    processBuilder.start();
+
+                    VfsUtil.createDirectoryIfMissing(autosaveDir, "objects");
                     VirtualFile versionsFile = autosaveDir.findChild("VERSIONS");
                     if (versionsFile == null) autosaveDir.createChildData(this, "VERSIONS");
+                }
+
+                VirtualFile gitignoreFile = VfsUtil.findFileByIoFile(new File(projectPath + "/.idea/.gitignore"), true);
+                if (gitignoreFile != null) {
+                    String content = VfsUtil.loadText(gitignoreFile);
+                    if (!content.contains(".autosave")) {
+                        String newContent = content + ".autosave\n";
+                        gitignoreFile.setBinaryContent(newContent.getBytes());
+                    }
+                } else {
+                    gitignoreFile = VfsUtil.createDirectoryIfMissing(projectPath + "/.idea").createChildData(this, ".gitignore");
+                    gitignoreFile.setBinaryContent(".autosave\n".getBytes());
                 }
             } catch (IOException e) {
                 throw new RuntimeException(e);

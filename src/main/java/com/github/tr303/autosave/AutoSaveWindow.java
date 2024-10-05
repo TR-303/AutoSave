@@ -10,16 +10,19 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import javax.swing.*;
-import javax.swing.tree.DefaultMutableTreeNode;
 import javax.swing.tree.DefaultTreeCellRenderer;
+import javax.swing.tree.DefaultTreeModel;
 import java.awt.*;
 import java.util.ArrayList;
 import java.util.Date;
 
 // 插件界面窗体
 public class AutoSaveWindow extends DialogWrapper {
+    private AutoSaveFunctional ASF;
+
     public AutoSaveWindow(Project project) {
         super(project);
+        ASF = new AutoSaveFunctional(project);
         setTitle("AutoSave");
         setModal(false);
         setSize(1000, 800);
@@ -36,9 +39,13 @@ public class AutoSaveWindow extends DialogWrapper {
         JPanel mainPanel = new JPanel();
         mainPanel.setLayout(new BorderLayout());
 
+        TreePanel treePanel = new TreePanel();
+
         mainPanel.add(new VersionPanel(), BorderLayout.WEST);
-        mainPanel.add(new TreePanel(), BorderLayout.CENTER);
+        mainPanel.add(treePanel, BorderLayout.CENTER);
         mainPanel.add(new TextPanel(), BorderLayout.EAST);
+
+        treePanel.setTree(ASF.getTreeNodeByVersionHash(ASF.getVersionList().get(0).rootObject));
 
         return mainPanel;
     }
@@ -104,23 +111,15 @@ class TreePanel extends JPanel {
 
     public TreePanel() {
         setPreferredSize(new Dimension(250, 600));
-
         setLayout(new BorderLayout());
 
-        DefaultMutableTreeNode root = new AutoSaveFunctional.CustomTreeNode("autosave", true);
+        tree = new Tree();
+        JBScrollPane scrollPane = new JBScrollPane(tree);
+        add(scrollPane, BorderLayout.CENTER);
+    }
 
-        root.add(new AutoSaveFunctional.CustomTreeNode("child1", true));
-        root.add(new AutoSaveFunctional.CustomTreeNode("child2", false));
-        root.add(new AutoSaveFunctional.CustomTreeNode("child3", true));
-
-        tree = new Tree(root);
-
-        tree.setBackground(UIManager.getColor("Tree.background"));
-        tree.setForeground(UIManager.getColor("Tree.foreground"));
-
-        tree.setCellRenderer(new CustomTreeCellRender());
-
-        add(new JBScrollPane(tree), BorderLayout.CENTER);
+    public void setTree(AutoSaveFunctional.CustomTreeNode node) {
+        tree.setModel(new DefaultTreeModel(node));
     }
 }
 

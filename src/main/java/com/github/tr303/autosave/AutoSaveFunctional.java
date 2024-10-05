@@ -1,5 +1,6 @@
 package com.github.tr303.autosave;
 
+import com.intellij.openapi.command.WriteCommandAction;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.vfs.VfsUtil;
 import com.intellij.openapi.diagnostic.Logger;
@@ -7,6 +8,7 @@ import com.intellij.openapi.vfs.VirtualFile;
 
 import javax.swing.tree.DefaultMutableTreeNode;
 import java.io.File;
+import java.io.IOException;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
@@ -100,10 +102,11 @@ public class AutoSaveFunctional {
 
         if (ASD.isDirectory(objectContent)) {
             String[] children = trueContent.split("\n");
-            for (String child : children) {
-                String[] parts = child.split("\0");
-                objectNode.add(getTreeNodeByVersionHash(parts[0].trim()));
-            }
+            for (String child : children)
+                if (!child.equals(".autosave")) {
+                    String[] parts = child.split("\0");
+                    objectNode.add(getTreeNodeByVersionHash(parts[0].trim()));
+                }
         }
 
         return objectNode;
@@ -145,9 +148,76 @@ public class AutoSaveFunctional {
 //    // 删除某个版本
 //    public void deleteVersion(String versionHash);
 //
-//    // 回溯到某个版本
-//    public void revertToVersion(String versionHash);
-//
+    // 回溯到某个版本
+    public Boolean revertToVersion(String versionHash) {
+        ArrayList<VersionInfo> versions = getVersionList();
+        String targetHash = null;
+
+        for (VersionInfo version : versions) {
+            if (version.rootObject.equals(versionHash)) {
+                targetHash = version.rootObject;
+                break;
+            }
+        }
+
+        if (targetHash == null) {
+            log.warn("Version not found: " + versionHash);
+            return false;
+        }
+
+        VirtualFile projectDir = VfsUtil.findFileByIoFile(new File(project.getBasePath()), true);
+        if (projectDir == null) return null;
+        WriteCommandAction.runWriteCommandAction(project, () -> {
+            try {
+                for (VirtualFile child : projectDir.getChildren())
+                    if (!child.getName().equals(".autosave")) {
+                        child.delete(this);
+                    }
+            } catch (IOException e) {
+                log.error(e);
+            }
+        });
+        revertVersionTreeRecursive(versionHash, projectDir);
+        return true;
+    }
+
+    private void revertVersionTreeRecursive(String hash, VirtualFile file) {
+        String objectContent = ASD.getObjectContentByHash(hash);
+        if (ASD.isDirectory(objectContent)) {
+            String trueContent = objectContent.substring(objectContent.indexOf('\0') + 1);
+            String[] entries = trueContent.split("\n");
+            for (String entry : entries) {
+                String[] parts = entry.split("\0");
+                String entryHash = parts[0];
+                String entryType = parts[1];
+                String entryName = parts[2];
+
+                WriteCommandAction.runWriteCommandAction(project, () -> {
+                    try {
+                        if ("DIR".equals(entryType)) {
+                            VirtualFile newDir = file.createChildDirectory(this, entryName);
+                            revertVersionTreeRecursive(entryHash, newDir);
+                        } else if ("FIL".equals(entryType)) {
+                            VirtualFile newFile = file.createChildData(this, entryName);
+                            revertVersionTreeRecursive(entryHash, newFile);
+                        }
+                    } catch (IOException e) {
+                        log.error(e);
+                    }
+                });
+            }
+        } else {
+            String trueContent = objectContent.substring(objectContent.indexOf('\0') + 1);
+            WriteCommandAction.runWriteCommandAction(project, () -> {
+                try {
+                    file.setBinaryContent(trueContent.getBytes());
+                } catch (IOException e) {
+                    log.error(e);
+                }
+            });
+        }
+    }
+
     // 保存现在的项目作为一个版本
     public Boolean saveCurrentProjectAsVersion(String tag) {
         String projectPath = project.getBasePath();
@@ -170,14 +240,15 @@ public class AutoSaveFunctional {
         }
     }
 
-    public String saveVersionTreeRecursive(String hash, VirtualFile file) {
+    private String saveVersionTreeRecursive(String hash, VirtualFile file) {
         if (hash == null) {
             if (file.isDirectory()) {
                 StringBuilder dirContent = new StringBuilder();
-                for (VirtualFile child : file.getChildren()) {
-                    String childHash = saveVersionTreeRecursive(null, child);
-                    dirContent.append(childHash).append(child.isDirectory() ? "\0DIR\0" : "\0FIL\0").append(child.getName()).append('\n');
-                }
+                for (VirtualFile child : file.getChildren())
+                    if (!child.getName().equals(".autosave")) {
+                        String childHash = saveVersionTreeRecursive(null, child);
+                        dirContent.append(childHash).append(child.isDirectory() ? "\0DIR\0" : "\0FIL\0").append(child.getName()).append('\n');
+                    }
                 String finalContent = ASD.addPrefix(String.valueOf(dirContent), file.getName(), true);
                 String finalHash = ASD.sha256(finalContent);
                 ASD.saveObjectWithHash(finalContent, finalHash);

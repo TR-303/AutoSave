@@ -116,6 +116,7 @@ public class AutoSaveData {
 
     // 添加FIL或DIR前缀
     String addPrefix(String content, String name, boolean isDirectory) {
+        log.info("added prefix for " + name);
         if (isDirectory) return "DIR@" + name + '\0' + content;
         else return "FIL@" + name + '\0' + content;
     }
