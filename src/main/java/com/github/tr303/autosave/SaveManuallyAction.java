@@ -26,6 +26,5 @@ public class SaveManuallyAction extends AnAction {
         }
 
         Notifications.Bus.notify(notification, project);
-
     }
 }
