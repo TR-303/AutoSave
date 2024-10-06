@@ -1,7 +1,9 @@
 package com.github.tr303.autosave;
 
 
+import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.command.WriteCommandAction;
+import com.intellij.openapi.fileTypes.FileTypeManager;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.startup.ProjectActivity;
 import com.intellij.openapi.vfs.VfsUtil;
@@ -31,18 +33,16 @@ public class AutoSaveStartUpActivity implements ProjectActivity {
                     if (versionsFile == null) autosaveDir.createChildData(this, "VERSIONS");
                     VirtualFile referencesFile = autosaveDir.findChild("REFERENCES");
                     if (referencesFile == null) autosaveDir.createChildData(this, "REFERENCES");
-                }
 
-                VirtualFile gitignoreFile = VfsUtil.findFileByIoFile(new File(projectPath + "/.idea/.gitignore"), true);
-                if (gitignoreFile != null) {
-                    String content = VfsUtil.loadText(gitignoreFile);
-                    if (!content.contains(".autosave")) {
-                        String newContent = content + ".autosave\n";
-                        gitignoreFile.setBinaryContent(newContent.getBytes());
+                    FileTypeManager fileTypeManager = FileTypeManager.getInstance();
+                    String ignoredFilesList = fileTypeManager.getIgnoredFilesList();
+                    if (!ignoredFilesList.contains(".autosave")) {
+                        String newIgnoredFilesList = ignoredFilesList.isEmpty() ? ".autosave" : ignoredFilesList + ";" + ".autosave";
+
+                        ApplicationManager.getApplication().runWriteAction(() -> {
+                            fileTypeManager.setIgnoredFilesList(newIgnoredFilesList);
+                        });
                     }
-                } else {
-                    gitignoreFile = VfsUtil.createDirectoryIfMissing(projectPath + "/.idea").createChildData(this, ".gitignore");
-                    gitignoreFile.setBinaryContent(".autosave\n".getBytes());
                 }
             } catch (IOException e) {
                 throw new RuntimeException(e);
