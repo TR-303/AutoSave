@@ -28,6 +28,7 @@
     <extensions defaultExtensionNs="com.intellij">
         <postStartupActivity implementation="com.github.tr303.autosave.AutoSaveStartUpActivity"/>
         <notificationGroup displayType="BALLOON" id="AutoSaveNotifications"/>
+        <applicationService serviceImplementation="com.github.tr303.autosave.AutoSaveScheduler"/>
     </extensions>
 
     <actions>
@@ -45,9 +46,4 @@
         </group>
 
     </actions>
-    <application-components>
-        <component>
-            <implementation-class>com.github.tr303.autosave.AutoSaveScheduler</implementation-class>
-        </component>
-    </application-components>
 </idea-plugin>
