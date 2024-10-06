@@ -17,8 +17,7 @@ public class SaveManuallyAction extends AnAction {
         Notification notification = new Notification("AutoSaveNotifications", "Saving current version", "Please wait...", NotificationType.INFORMATION);
         Notifications.Bus.notify(notification, project);
 
-//        Boolean result = new AutoSaveFunctional(project).saveCurrentProjectAsVersion("User Quick Saved");
-        Boolean result = new AutoSaveFunctional(project).revertToVersion("168753affa5d73966d8da75b176ad95f2410ffae0736cef3eb1dcab3b67f3aab");
+        Boolean result = new AutoSaveFunctional(project).saveCurrentProjectAsVersion("User Quick Saved");
 
         if (result != null && result) {
             notification.setContent("Succeed！");
@@ -27,6 +26,5 @@ public class SaveManuallyAction extends AnAction {
         }
 
         Notifications.Bus.notify(notification, project);
-
     }
 }
