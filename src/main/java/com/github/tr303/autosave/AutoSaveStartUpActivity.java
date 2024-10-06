@@ -29,6 +29,8 @@ public class AutoSaveStartUpActivity implements ProjectActivity {
                     VfsUtil.createDirectoryIfMissing(autosaveDir, "objects");
                     VirtualFile versionsFile = autosaveDir.findChild("VERSIONS");
                     if (versionsFile == null) autosaveDir.createChildData(this, "VERSIONS");
+                    VirtualFile referencesFile = autosaveDir.findChild("REFERENCES");
+                    if (referencesFile == null) autosaveDir.createChildData(this, "REFERENCES");
                 }
 
                 VirtualFile gitignoreFile = VfsUtil.findFileByIoFile(new File(projectPath + "/.idea/.gitignore"), true);

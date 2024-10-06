@@ -11,6 +11,8 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 public class AutoSaveData {
@@ -107,6 +109,23 @@ public class AutoSaveData {
         });
     }
 
+    void deleteObjectOfHash(String hash) {
+        String objectDir = project.getBasePath() + "/.autosave/objects/" + hash.substring(0, 2);
+        String objectFileName = hash.substring(2);
+
+        WriteCommandAction.runWriteCommandAction(project, () -> {
+            try {
+                VirtualFile objectDirFile = VfsUtil.createDirectoryIfMissing(objectDir);
+                if (objectDirFile != null) {
+                    VirtualFile object = objectDirFile.findChild(objectFileName);
+                    if (object != null) object.delete(this);
+                }
+            } catch (IOException e) {
+                log.error(e);
+            }
+        });
+    }
+
     // 判断原始内容String描述的是目录还是文件
     Boolean isDirectory(String content) {
         if (content.startsWith("FIL@")) return false;
@@ -141,8 +160,80 @@ public class AutoSaveData {
         }
         return null;
     }
-}
 
-class ReferenceCounter {
+    public ReferenceCounter getReferenceCounter() {
+        return new ReferenceCounter();
+    }
 
+    public class ReferenceCounter {
+        private final HashMap<String, Integer> referenceMap = new HashMap<>();
+
+        public void loadReferences() {
+            String referenceContent = getReferenceFileContent(); // 读取REFERENCE文件内容
+            if (referenceContent != null) {
+                String[] lines = referenceContent.split("\n");
+                for (String line : lines) {
+                    String[] parts = line.split("\0");
+                    if (parts.length == 2) {
+                        String hash = parts[0];
+                        int count = Integer.parseInt(parts[1]);
+                        referenceMap.put(hash, count);
+                    }
+                }
+            }
+        }
+
+        public void increment(String hash) {
+            referenceMap.put(hash, referenceMap.getOrDefault(hash, 0) + 1);
+        }
+
+        public Boolean decrement(String hash) {
+            if (referenceMap.containsKey(hash)) {
+                int count = referenceMap.get(hash);
+                if (count > 1) {
+                    referenceMap.put(hash, count - 1);
+                    return false;
+                } else {
+                    referenceMap.remove(hash);
+                    return true;
+                }
+            }
+            return null;
+        }
+
+        public void saveReferences() {
+            StringBuilder content = new StringBuilder();
+            for (HashMap.Entry<String, Integer> entry : referenceMap.entrySet()) {
+                content.append(entry.getKey()).append('\0').append(entry.getValue()).append('\n');
+            }
+            saveReferenceFileContent(content.toString());
+        }
+
+        private String getReferenceFileContent() {
+            String referenceFilePath = project.getBasePath() + "/.autosave/REFERENCES";
+            VirtualFile referenceFile = VfsUtil.findFileByIoFile(new File(referenceFilePath), true);
+            if (referenceFile != null) {
+                try {
+                    return VfsUtil.loadText(referenceFile);
+                } catch (IOException e) {
+                    log.error(e);
+                }
+            }
+            return null;
+        }
+
+        private void saveReferenceFileContent(String content) {
+            String referenceFilePath = project.getBasePath() + "/.autosave/REFERENCES";
+            VirtualFile referenceFile = VfsUtil.findFileByIoFile(new File(referenceFilePath), true);
+            if (referenceFile != null) {
+                WriteCommandAction.runWriteCommandAction(project, () -> {
+                    try {
+                        referenceFile.setBinaryContent(content.getBytes(StandardCharsets.UTF_8));
+                    } catch (IOException e) {
+                        log.error(e);
+                    }
+                });
+            }
+        }
+    }
 }

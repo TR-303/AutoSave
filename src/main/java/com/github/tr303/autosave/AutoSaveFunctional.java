@@ -144,24 +144,59 @@ public class AutoSaveFunctional {
         return now.format(formatter);
     }
 
-    //
-//    // 删除某个版本
-//    public void deleteVersion(String versionHash);
-//
-    // 回溯到某个版本
-    public Boolean revertToVersion(String versionHash) {
+    // 删除某个版本
+    public Boolean deleteVersion(String versionHash) {
         ArrayList<VersionInfo> versions = getVersionList();
         String targetHash = null;
 
         for (VersionInfo version : versions) {
             if (version.rootObject.equals(versionHash)) {
                 targetHash = version.rootObject;
+                versions.remove(version);
+                saveVersionList(versions);
                 break;
             }
         }
 
         if (targetHash == null) {
-            log.warn("Version not found: " + versionHash);
+            return false;
+        }
+
+        AutoSaveData.ReferenceCounter rc = ASD.getReferenceCounter();
+        rc.loadReferences();
+        deleteVersionTreeRecursive(targetHash, rc);
+        rc.saveReferences();
+        return true;
+    }
+
+    private void deleteVersionTreeRecursive(String hash, AutoSaveData.ReferenceCounter rc) {
+        String content = ASD.getObjectContentByHash(hash);
+        if (ASD.isDirectory(content)) {
+            String trueContent = content.substring(content.indexOf('\0') + 1);
+            String[] entries = trueContent.split("\n");
+            for (String entry : entries) {
+                String[] parts = entry.split("\0");
+                deleteVersionTreeRecursive(parts[0], rc);
+            }
+        }
+        if (rc.decrement(hash)) ASD.deleteObjectOfHash(hash);
+    }
+
+    // 回溯到某个版本
+    public Boolean revertToVersion(String versionHash) {
+        ArrayList<VersionInfo> versions = getVersionList();
+        String targetHash = null;
+        String targetTime = null;
+
+        for (VersionInfo version : versions) {
+            if (version.rootObject.equals(versionHash)) {
+                targetHash = version.rootObject;
+                targetTime = version.timestamp;
+                break;
+            }
+        }
+
+        if (targetHash == null) {
             return false;
         }
 
@@ -178,6 +213,11 @@ public class AutoSaveFunctional {
             }
         });
         revertVersionTreeRecursive(versionHash, projectDir);
+
+        for (VersionInfo info : versions) {
+            if (info.timestamp.compareTo(targetTime) > 0) deleteVersion(info.rootObject);
+        }
+
         return true;
     }
 
@@ -226,27 +266,35 @@ public class AutoSaveFunctional {
 
         ArrayList<VersionInfo> versionList = getVersionList();
 
+        AutoSaveData.ReferenceCounter rc = ASD.getReferenceCounter();
+        rc.loadReferences();
+
         if (!versionList.isEmpty()) {
-            String hash = saveVersionTreeRecursive(versionList.get(0).rootObject, projectDir);
+            String hash = saveVersionTreeRecursive(versionList.get(0).rootObject, projectDir, rc);
             if (versionList.get(0).rootObject.equals(hash)) return false;
             else {
                 versionList.add(0, new VersionInfo(getCurrentTimeFormatted(), hash, tag));
+                rc.increment(hash);
+                rc.saveReferences();
                 return saveVersionList(versionList);
             }
         } else {
-            String hash = saveVersionTreeRecursive(null, projectDir);
+            String hash = saveVersionTreeRecursive(null, projectDir, rc);
             versionList.add(0, new VersionInfo(getCurrentTimeFormatted(), hash, tag));
+            rc.increment(hash);
+            rc.saveReferences();
             return saveVersionList(versionList);
         }
     }
 
-    private String saveVersionTreeRecursive(String hash, VirtualFile file) {
+    private String saveVersionTreeRecursive(String hash, VirtualFile file, AutoSaveData.ReferenceCounter rc) {
         if (hash == null) {
             if (file.isDirectory()) {
                 StringBuilder dirContent = new StringBuilder();
                 for (VirtualFile child : file.getChildren())
                     if (!child.getName().equals(".autosave")) {
-                        String childHash = saveVersionTreeRecursive(null, child);
+                        String childHash = saveVersionTreeRecursive(null, child, rc);
+                        rc.increment(childHash);
                         dirContent.append(childHash).append(child.isDirectory() ? "\0DIR\0" : "\0FIL\0").append(child.getName()).append('\n');
                     }
                 String finalContent = ASD.addPrefix(String.valueOf(dirContent), file.getName(), true);
@@ -284,7 +332,8 @@ public class AutoSaveFunctional {
                     String[] parts = entry.split("\0");
                     if (parts[2].equals(child.getName())) {
                         if ((parts[1].equals("DIR") && child.isDirectory()) || (parts[1].equals("FIL") && !child.isDirectory())) {
-                            String childHash = saveVersionTreeRecursive(parts[0], child);
+                            String childHash = saveVersionTreeRecursive(parts[0], child, rc);
+                            rc.increment(childHash);
                             dirContent.append(childHash).append('\0').append(parts[1]).append('\0').append(child.getName()).append('\n');
                             found = true;
                             break;
@@ -292,7 +341,8 @@ public class AutoSaveFunctional {
                     }
                 }
                 if (!found) {
-                    String childHash = saveVersionTreeRecursive(null, child);
+                    String childHash = saveVersionTreeRecursive(null, child, rc);
+                    rc.increment(childHash);
                     dirContent.append(childHash).append(child.isDirectory() ? "\0DIR\0" : "\0FIL\0").append(child.getName()).append('\n');
                 }
             }
