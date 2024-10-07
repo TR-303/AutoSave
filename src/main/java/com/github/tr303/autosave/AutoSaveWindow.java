@@ -8,6 +8,7 @@ import com.intellij.ui.components.JBScrollPane;
 import com.intellij.ui.treeStructure.Tree;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+
 import javax.swing.*;
 import javax.swing.tree.DefaultTreeCellRenderer;
 import javax.swing.tree.DefaultTreeModel;
@@ -65,7 +66,7 @@ public class AutoSaveWindow extends DialogWrapper {
         functionPanel.add(textPanel, BorderLayout.EAST);
 
         //默认展示第一个版本
-        if(!ASF.getVersionList().isEmpty()){
+        if (!ASF.getVersionList().isEmpty()) {
             treePanel.setTree(ASF.getTreeNodeByVersionHash(ASF.getVersionList().get(0).rootObject));
         }
 
@@ -341,7 +342,7 @@ class TextPanel extends JPanel {
 
         textPane.setFont(UIManager.getFont("Editor.Font"));
         textPane.setBackground(UIManager.getColor("Editor.background")); // 深色背景
-        textPane.setForeground(Color.lightGray); // 白色文本
+        textPane.setForeground(UIManager.getColor("Editor.foreground"));
 
         add(new JBScrollPane(textPane), BorderLayout.CENTER);
     }
