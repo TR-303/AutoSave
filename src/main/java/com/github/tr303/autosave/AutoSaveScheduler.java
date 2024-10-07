@@ -4,14 +4,12 @@ import com.intellij.notification.Notification;
 import com.intellij.notification.NotificationType;
 import com.intellij.notification.Notifications;
 import com.intellij.openapi.application.ApplicationManager;
-import com.intellij.openapi.editor.Document;
+import com.intellij.openapi.editor.EditorFactory;
 import com.intellij.openapi.editor.event.DocumentEvent;
 import com.intellij.openapi.editor.event.DocumentListener;
 import com.intellij.openapi.fileEditor.FileDocumentManager;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.project.ProjectManager;
-import com.intellij.openapi.util.Computable;
-import com.intellij.openapi.vfs.VirtualFile;
 import org.jetbrains.annotations.NotNull;
 
 import java.time.Duration;
@@ -42,7 +40,7 @@ public class AutoSaveScheduler implements AutoCloseable {
 
         scheduler = Executors.newScheduledThreadPool(1);
 
-        // 每秒检查一次保存条件（10秒未编辑 或 5分钟内未保存）
+        // 每秒检查一次保存条件（10秒未编辑 或 1分钟内未保存）
         scheduler.scheduleAtFixedRate(this::checkSaveConditions, 0, 1, TimeUnit.SECONDS);
         isRunning = true; // 更新状态为运行中
         System.out.println("Scheduler started.");
@@ -64,37 +62,13 @@ public class AutoSaveScheduler implements AutoCloseable {
 
     // 添加文档监听器，遍历所有项目中的文档
     private void addDocumentListeners() {
-        Project[] openProjects = ProjectManager.getInstance().getOpenProjects();
-        for (Project project : openProjects) {
-            VirtualFile projectBaseDir = project.getBaseDir();
-            if (projectBaseDir != null) {
-                ApplicationManager.getApplication().runReadAction(() -> {
-                    addListenersToDirectory(projectBaseDir); // 确保在读取操作中调用
-                });
+        EditorFactory.getInstance().getEventMulticaster().addDocumentListener(new DocumentListener() {
+            @Override
+            public void documentChanged(@NotNull DocumentEvent event) {
+                lastEditTime = Instant.now(); // 更新上次编辑时间
+                hasChanged = true;
             }
-        }
-    }
-
-    // 遍历目录中的所有文件并为它们添加 DocumentListener
-    private void addListenersToDirectory(VirtualFile directory) {
-        for (VirtualFile file : directory.getChildren()) {
-            if (file.isDirectory()) {
-                addListenersToDirectory(file); // 递归遍历子目录
-            } else {
-                Document document = ApplicationManager.getApplication().runReadAction((Computable<Document>) () -> {
-                    return FileDocumentManager.getInstance().getDocument(file);
-                });
-                if (document != null) {
-                    document.addDocumentListener(new DocumentListener() {
-                        @Override
-                        public void documentChanged(@NotNull DocumentEvent event) {
-                            lastEditTime = Instant.now(); // 更新上次编辑时间
-                            hasChanged = true;
-                        }
-                    });
-                }
-            }
-        }
+        });
     }
 
     // 定时检查是否满足保存条件
@@ -103,7 +77,7 @@ public class AutoSaveScheduler implements AutoCloseable {
         Duration sinceLastSave = Duration.between(lastSaveTime, Instant.now());
 
         // 近期未编辑
-        if (hasChanged && sinceLastEdit.getSeconds() >= 3) {
+        if (hasChanged && sinceLastEdit.getSeconds() >= 10) {
             autoSave("Auto Save: User Stopped Editing");
         }
 
@@ -115,12 +89,12 @@ public class AutoSaveScheduler implements AutoCloseable {
 
     // 自动保存函数
     private void autoSave(String saveReason) {
+        System.out.println("########### " + saveReason + " ###########");
         Project[] openProjects = ProjectManager.getInstance().getOpenProjects();
         if (openProjects.length == 0) {
             System.out.println("No open projects.");
             return;
         }
-        System.out.println("########### " + saveReason + " ###########");
 
         // 确保保存操作在 Event Dispatch Thread (EDT) 中同步执行
         ApplicationManager.getApplication().invokeAndWait(() -> {
