@@ -52,22 +52,22 @@ public class AutoSaveWindow extends DialogWrapper {
 
         //上下两层：上层三栏，下层放操作按钮
         FunctionPanel functionPanel = new FunctionPanel();
-        ActionPanel actionPanel = new ActionPanel(this::onDeleteAction, this::onRevertAction); // 添加删除和插入按钮事件
+        ActionPanel actionPanel = new ActionPanel(this::onRenameAction, this::onDeleteAction, this::onRevertAction); // 添加删除和插入按钮事件
         mainPanel.add(functionPanel, BorderLayout.NORTH);
         mainPanel.add(actionPanel, BorderLayout.SOUTH);
 
         //上层三栏
-        versionPanel = new VersionPanel(ASF, this::updateTreePanel); // 渲染版本列表
+        VersionAndSearchPanel versionAndSearchPanel = new VersionAndSearchPanel();//搜索和版本列表
         textPanel = new TextPanel(); // 初始化TextPanel
         treePanel = new TreePanel(this::onFileSelected); // 当选中文件时调用回调
-        functionPanel.add(versionPanel, BorderLayout.WEST);
+        functionPanel.add(versionAndSearchPanel, BorderLayout.WEST);
         functionPanel.add(treePanel, BorderLayout.CENTER);
         functionPanel.add(textPanel, BorderLayout.EAST);
 
-        //默认展示第一个版本
-        if(!ASF.getVersionList().isEmpty()){
-            treePanel.setTree(ASF.getTreeNodeByVersionHash(ASF.getVersionList().get(0).rootObject));
-        }
+        versionPanel = new VersionPanel(ASF, this::updateTreePanel); // 渲染版本列表
+        SearchPanel searchPanel = new SearchPanel(ASF, versionPanel); // 搜索版本
+        versionAndSearchPanel.add(searchPanel, BorderLayout.NORTH);
+        versionAndSearchPanel.add(versionPanel, BorderLayout.SOUTH);
 
         return mainPanel;
     }
@@ -82,7 +82,9 @@ public class AutoSaveWindow extends DialogWrapper {
         boolean success = ASF.deleteVersion(selectedVersionHash);
         if (success) {
             JOptionPane.showMessageDialog(null, "Delete Successful！");
-            versionPanel.refresh(ASF);
+            versionPanel.refresh(ASF.getVersionList());
+            treePanel.refresh();
+            textPanel.refresh();
         } else {
             JOptionPane.showMessageDialog(null, "Fail，can't detect the version selected");
         }
@@ -98,10 +100,56 @@ public class AutoSaveWindow extends DialogWrapper {
         boolean success = ASF.revertToVersion(selectedVersionHash);
         if (success) {
             JOptionPane.showMessageDialog(null, "Revert Successful！");
+            versionPanel.refresh(ASF.getVersionList());
         } else {
             JOptionPane.showMessageDialog(null, "Fail，can't detect the version selected");
         }
     }
+
+    // 重命名按钮的事件处理
+    private void onRenameAction() {
+        if (selectedVersionHash == null) {
+            JOptionPane.showMessageDialog(null, "Please Choose A Version to Rename");
+            return;
+        }
+
+        String oldTag = "";
+        // 获取所有版本信息
+        ArrayList<AutoSaveFunctional.VersionInfo> versionList = ASF.getVersionList();
+        AutoSaveFunctional.VersionInfo selectedVersion = null;
+        // 遍历版本列表，查找与哈希匹配的版本
+        for (AutoSaveFunctional.VersionInfo version : versionList) {
+            if (version.rootObject.equals(selectedVersionHash)) {
+                oldTag = version.tag;
+                selectedVersion = version;
+                break;
+            }
+        }
+        if (selectedVersion == null) {
+            JOptionPane.showMessageDialog(null, "Version not found.");
+            return;
+        }
+
+        // 弹出输入框，提示用户输入新的版本名称
+        String newTag = JOptionPane.showInputDialog(null, "Enter new version name:", oldTag);
+        // 如果用户输入了有效的新名称
+        if (newTag != null && !newTag.trim().isEmpty()) {
+            // 更新版本的 tag
+            selectedVersion.tag = newTag.trim();
+            // 保存更新后的版本列表
+            boolean success = ASF.saveVersionList(versionList);
+
+            if (success) {
+                JOptionPane.showMessageDialog(null, "Rename Successful！");
+                versionPanel.refresh(ASF.getVersionList());
+            } else {
+                JOptionPane.showMessageDialog(null, "Failed to save the renamed version.");
+            }
+        } else {
+            JOptionPane.showMessageDialog(null, "New version name cannot be empty!");
+        }
+    }
+
 
     // 更新TreePanel中显示的树结构
     private void updateTreePanel(String versionHash) {
@@ -127,14 +175,77 @@ class FunctionPanel extends JPanel {
     }
 }
 
-// 左面板，用于显示版本列表
+//左面板
+class VersionAndSearchPanel extends JPanel {
+    public VersionAndSearchPanel() {
+        setPreferredSize(new Dimension(200, 600));
+        setLayout(new BorderLayout());
+    }
+}
+
+//左上面板：根据tag搜索版本
+class SearchPanel extends JPanel {
+    private JTextField searchField;  // 输入框
+    private JButton searchButton;    // 搜索按钮
+    private AutoSaveFunctional ASF;  // 保存 ASF 以供搜索使用
+    private VersionPanel versionPanel; // 用于更新版本列表的引用
+
+    public SearchPanel(AutoSaveFunctional ASF, VersionPanel versionPanel) {
+        this.ASF = ASF;
+        this.versionPanel = versionPanel;
+
+        setPreferredSize(new Dimension(200, 30));
+        setLayout(new BorderLayout());
+
+        // 创建输入框
+        searchField = new JTextField();
+        add(searchField, BorderLayout.CENTER);
+
+        // 创建搜索按钮
+        searchButton = new JButton("Search");
+        add(searchButton, BorderLayout.EAST);
+
+        // 设置按钮点击事件处理
+        searchButton.addActionListener(e -> onSearchAction());
+    }
+
+    // 搜索逻辑
+    private void onSearchAction() {
+        String searchQuery = searchField.getText().trim(); // 获取用户输入
+
+        if (searchQuery.isEmpty()) {
+            // 如果搜索框为空，显示所有版本
+            versionPanel.refresh(ASF.getVersionList());
+        } else {
+            // 根据 tag 搜索版本
+            ArrayList<AutoSaveFunctional.VersionInfo> searchResults = searchVersionsByTag(searchQuery);
+            versionPanel.refresh(searchResults); // 更新版本列表
+        }
+    }
+
+    // 根据 tag 搜索版本
+    private ArrayList<AutoSaveFunctional.VersionInfo> searchVersionsByTag(String tag) {
+        ArrayList<AutoSaveFunctional.VersionInfo> versionList = ASF.getVersionList();
+        ArrayList<AutoSaveFunctional.VersionInfo> resultList = new ArrayList<>();
+
+        for (AutoSaveFunctional.VersionInfo version : versionList) {
+            if (version.tag.toLowerCase().contains(tag.toLowerCase())) {
+                resultList.add(version); // 如果 tag 包含搜索关键词，加入结果列表
+            }
+        }
+
+        return resultList;
+    }
+}
+
+// 左下面板，用于显示版本列表
 class VersionPanel extends JPanel {
     private ArrayList<VersionItem> items = new ArrayList<>();
     private Consumer<String> onVersionSelected; // 回调，用于通知AutoSaveWindow版本被选中
 
     public VersionPanel(AutoSaveFunctional ASF, Consumer<String> onVersionSelected) {
         this.onVersionSelected = onVersionSelected; // 设置回调
-        setPreferredSize(new Dimension(200, 600));
+        setPreferredSize(new Dimension(200, 570));
         setLayout(new BorderLayout()); // 使用 BorderLayout
 
         JPanel itemContainer = new JPanel();
@@ -147,10 +258,6 @@ class VersionPanel extends JPanel {
             VersionItem item = new VersionItem(versionInfo.tag, versionDate, this, versionInfo.rootObject);
             items.add(item);
             itemContainer.add(item);
-        }
-
-        if (!items.isEmpty()) {
-            items.get(0).mark(true); // 默认选中第一个版本
         }
 
         JBScrollPane scrollPane = new JBScrollPane(itemContainer);
@@ -185,9 +292,8 @@ class VersionPanel extends JPanel {
     }
 
     //刷新版本列表
-    public void refresh(AutoSaveFunctional ASF) {
+    public void refresh(ArrayList<AutoSaveFunctional.VersionInfo> versionList) {
         removeAll(); // 清空当前面板的内容
-        ArrayList<AutoSaveFunctional.VersionInfo> versionList = ASF.getVersionList();// 重新获取版本列表
 
         setLayout(new BorderLayout()); // 使用 BorderLayout
         JPanel itemContainer = new JPanel();
@@ -208,7 +314,7 @@ class VersionPanel extends JPanel {
 
 }
 
-//左面板的item
+//左下面板的item
 class VersionItem extends JPanel {
     public boolean isSelected;
     private VersionPanel parentPanel; // 引用父面板
@@ -302,6 +408,11 @@ class TreePanel extends JPanel {
     public void setTree(AutoSaveFunctional.CustomTreeNode node) {
         tree.setModel(new DefaultTreeModel(node));
     }
+
+    //刷新
+    public void refresh() {
+        tree.setModel(new DefaultTreeModel(null));
+    }
 }
 
 // 用于自定义控制树节点图表
@@ -350,20 +461,31 @@ class TextPanel extends JPanel {
     public void setFileContent(String content) {
         textPane.setText(content);
     }
+
+    public void refresh(){
+        setLayout(new BorderLayout());
+        textPane = new JTextPane();
+        textPane.setText(null);
+
+        add(new JBScrollPane(textPane), BorderLayout.CENTER);
+    }
 }
 
 //操作按钮
 class ActionPanel extends JPanel {
-    public ActionPanel(Runnable deleteAction, Runnable revertAction) {
+    public ActionPanel(Runnable renameAction,Runnable deleteAction, Runnable revertAction) {
         setPreferredSize(new Dimension(1000, 40));
         setLayout(new FlowLayout(FlowLayout.RIGHT));
 
-        JButton deleteButton = new JButton("Delete");
+        JButton renameButton = new JButton("Rename");
         JButton revertButton = new JButton("Revert");
+        JButton deleteButton = new JButton("Delete");
 
+        renameButton.addActionListener(e -> renameAction.run());
         deleteButton.addActionListener(e -> deleteAction.run());
         revertButton.addActionListener(e -> revertAction.run());
 
+        add(renameButton);
         add(revertButton);
         add(deleteButton);
     }
