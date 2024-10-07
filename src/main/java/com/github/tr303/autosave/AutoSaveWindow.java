@@ -1,11 +1,16 @@
 package com.github.tr303.autosave;
 
 import com.intellij.icons.AllIcons;
+import com.intellij.openapi.editor.Document;
+import com.intellij.openapi.editor.Editor;
+import com.intellij.openapi.editor.EditorFactory;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.ui.DialogWrapper;
 import com.intellij.ui.JBColor;
 import com.intellij.ui.components.JBScrollPane;
 import com.intellij.ui.treeStructure.Tree;
+import com.intellij.openapi.fileTypes.FileType;
+import com.intellij.openapi.fileTypes.FileTypeManager;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -58,9 +63,9 @@ public class AutoSaveWindow extends DialogWrapper {
         mainPanel.add(actionPanel, BorderLayout.SOUTH);
 
         //上层三栏
-        versionPanel = new VersionPanel(ASF, this::updateTreePanel); // 渲染版本列表
         textPanel = new TextPanel(); // 初始化TextPanel
         treePanel = new TreePanel(this::onFileSelected); // 当选中文件时调用回调
+        versionPanel = new VersionPanel(ASF, this::updateTreePanel); // 渲染版本列表
         functionPanel.add(versionPanel, BorderLayout.WEST);
         functionPanel.add(treePanel, BorderLayout.CENTER);
         functionPanel.add(textPanel, BorderLayout.EAST);
@@ -114,8 +119,9 @@ public class AutoSaveWindow extends DialogWrapper {
     // 当文件被选中时，加载并显示文件内容
     private void onFileSelected(AutoSaveFunctional.CustomTreeNode selectedNode) {
         if (selectedVersionHash != null) {
+            String fileName = selectedNode.getName();
             String fileContent = ASF.getFileContentForVersionAndPath(selectedVersionHash, selectedNode); // 获取文件内容
-            textPanel.setFileContent(fileContent); // 显示文件内容
+            textPanel.setFileContent(fileContent, fileName); // 显示文件内容
         }
     }
 }
@@ -152,6 +158,7 @@ class VersionPanel extends JPanel {
 
         if (!items.isEmpty()) {
             items.get(0).mark(true); // 默认选中第一个版本
+            onVersionSelected.accept(items.get(0).getVersionHash()); // 传递选中的版本哈希
         }
 
         JBScrollPane scrollPane = new JBScrollPane(itemContainer);
@@ -328,28 +335,37 @@ class CustomTreeCellRender extends DefaultTreeCellRenderer {
 }
 
 class TextPanel extends JPanel {
-    private JTextPane textPane;
+    private Editor editor;  // 使用 IntelliJ 的 Editor 而不是 JTextPane
 
     public TextPanel() {
         setPreferredSize(new Dimension(550, 600));
-
         setLayout(new BorderLayout());
-
-        // 创建 JTextPane 并设置为只读
-        textPane = new JTextPane();
-        textPane.setEditable(false); // 设置为只读
-        textPane.setContentType("text/plain"); // 设置文本类型
-
-        textPane.setFont(UIManager.getFont("Editor.Font"));
-        textPane.setBackground(UIManager.getColor("Editor.background")); // 深色背景
-        textPane.setForeground(UIManager.getColor("Editor.foreground"));
-
-        add(new JBScrollPane(textPane), BorderLayout.CENTER);
     }
 
     // 设置文件内容的方法
-    public void setFileContent(String content) {
-        textPane.setText(content);
+    public void setFileContent(String content, String extend) {
+        // 将 Windows 风格的换行符 (\r\n) 转换为 Unix 风格的换行符 (\n)
+        String normalizedContent = content.replace("\r\n", "\n");
+
+        // 获取编辑器工厂
+        EditorFactory editorFactory = EditorFactory.getInstance();
+        // 创建 Document 对象，用于存储代码
+        Document document = editorFactory.createDocument(normalizedContent);
+        // 获取要使用的文件类型 (例如 Java 文件)
+        FileType fileType = FileTypeManager.getInstance().getFileTypeByExtension("java");
+
+        // 创建带有语法高亮的 Editor
+        if (editor != null) {
+            // 如果 Editor 已存在，则先释放旧的 Editor
+            editorFactory.releaseEditor(editor);
+        }
+        editor = editorFactory.createEditor(document, null, fileType, true);
+
+        // 将 Editor 添加到面板中
+        removeAll();  // 清除之前的组件
+        add(new JBScrollPane(editor.getComponent()), BorderLayout.CENTER);
+        revalidate();
+        repaint();
     }
 }
 
