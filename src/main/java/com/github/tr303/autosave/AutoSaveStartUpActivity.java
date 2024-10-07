@@ -19,6 +19,12 @@ import java.io.IOException;
 public class AutoSaveStartUpActivity implements ProjectActivity {
     @Override
     public @Nullable Object execute(@NotNull Project project, @NotNull Continuation<? super Unit> continuation) {
+        // 启动自动保存调度器
+        AutoSaveScheduler autoSaveScheduler = ApplicationManager.getApplication().getService(AutoSaveScheduler.class);
+        if (autoSaveScheduler != null) {
+            autoSaveScheduler.startScheduler();
+        }
+
         String projectPath = project.getBasePath();
         WriteCommandAction.runWriteCommandAction(project, () -> {
             try {
