@@ -35,8 +35,10 @@
 
         <group id="org.intellij.sdk.action.GroupedActions"
                text="AutoSave History" description="View your versions of project saved by AutoSave plugin"
-               popup="true">
+               popup="true" icon="AllIcons.Debugger.Db_db_object">
             <add-to-group group-id="EditorPopupMenu" anchor="last"/>
+            <add-to-group group-id="ProjectViewPopupMenu" anchor="last"/>
+            <add-to-group group-id="FileMenu" anchor="before" relative-to-action="LocalHistory.MainMenuGroup"/>
             <action id="com.github.tr303.autosave.ViewVersionsAction"
                     class="com.github.tr303.autosave.ViewVersionsAction"
                     text="View Versions" description="View versions of the project."/>
