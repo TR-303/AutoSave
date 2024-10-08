@@ -225,6 +225,7 @@ public class AutoSaveFunctional {
     }
 
     private void deleteVersionTreeRecursive(String hash, AutoSaveData.ReferenceCounter rc) {
+        if (hash.isEmpty()) return;
         String content = ASD.getObjectContentByHash(hash);
         if (ASD.isDirectory(content)) {
             String trueContent = content.substring(content.indexOf('\0') + 1);

@@ -363,7 +363,7 @@ class VersionItem extends JPanel {
                     setBackground(JBColor.gray);
 
                 // 设置鼠标悬停显示版本的tag
-                setToolTipText("Version tag: " +name);
+                setToolTipText("Version tag: " + name);
             }
 
             @Override
@@ -464,16 +464,24 @@ class TextPanel extends JPanel {
     }
 
     // 设置文件内容的方法
-    public void setFileContent(String content, String extend) {
+    public void setFileContent(String content, String filename) {
         // 将 Windows 风格的换行符 (\r\n) 转换为 Unix 风格的换行符 (\n)
         String normalizedContent = content.replace("\r\n", "\n");
+        String extension;
+
+        int lastIndex = filename.lastIndexOf('.');
+        if (lastIndex > 0 && lastIndex < filename.length() - 1) {
+            extension = filename.substring(lastIndex + 1);
+        } else {
+            extension = ""; // 无扩展名
+        }
 
         // 获取编辑器工厂
         EditorFactory editorFactory = EditorFactory.getInstance();
         // 创建 Document 对象，用于存储代码
         Document document = editorFactory.createDocument(normalizedContent);
         // 获取要使用的文件类型 (例如 Java 文件)
-        FileType fileType = FileTypeManager.getInstance().getFileTypeByExtension("java");
+        FileType fileType = FileTypeManager.getInstance().getFileTypeByExtension(extension);
 
         // 创建带有语法高亮的 Editor
         if (editor != null) {
@@ -489,7 +497,7 @@ class TextPanel extends JPanel {
         repaint();
     }
 
-    public void refresh(){
+    public void refresh() {
         setLayout(new BorderLayout());
         JTextPane textPane = new JTextPane();
         textPane.setText(null);
@@ -500,7 +508,7 @@ class TextPanel extends JPanel {
 
 //操作按钮
 class ActionPanel extends JPanel {
-    public ActionPanel(Runnable renameAction,Runnable deleteAction, Runnable revertAction) {
+    public ActionPanel(Runnable renameAction, Runnable deleteAction, Runnable revertAction) {
         setPreferredSize(new Dimension(1000, 40));
         setLayout(new FlowLayout(FlowLayout.RIGHT));
 
