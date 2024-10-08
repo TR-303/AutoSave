@@ -28,17 +28,14 @@
     <extensions defaultExtensionNs="com.intellij">
         <postStartupActivity implementation="com.github.tr303.autosave.AutoSaveStartUpActivity"/>
         <notificationGroup displayType="BALLOON" id="AutoSaveNotifications"/>
-        <applicationService serviceImplementation="com.github.tr303.autosave.AutoSaveScheduler"/>
     </extensions>
 
     <actions>
 
         <group id="org.intellij.sdk.action.GroupedActions"
                text="AutoSave History" description="View your versions of project saved by AutoSave plugin"
-               popup="true" icon="AllIcons.Debugger.Db_db_object">
+               popup="true">
             <add-to-group group-id="EditorPopupMenu" anchor="last"/>
-            <add-to-group group-id="ProjectViewPopupMenu" anchor="last"/>
-            <add-to-group group-id="FileMenu" anchor="before" relative-to-action="LocalHistory.MainMenuGroup"/>
             <action id="com.github.tr303.autosave.ViewVersionsAction"
                     class="com.github.tr303.autosave.ViewVersionsAction"
                     text="View Versions" description="View versions of the project."/>
@@ -48,4 +45,5 @@
         </group>
 
     </actions>
+
 </idea-plugin>
