@@ -1,13 +1,19 @@
 package com.github.tr303.autosave;
 
 import com.intellij.icons.AllIcons;
+import com.intellij.openapi.editor.Document;
+import com.intellij.openapi.editor.Editor;
+import com.intellij.openapi.editor.EditorFactory;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.ui.DialogWrapper;
 import com.intellij.ui.JBColor;
 import com.intellij.ui.components.JBScrollPane;
 import com.intellij.ui.treeStructure.Tree;
+import com.intellij.openapi.fileTypes.FileType;
+import com.intellij.openapi.fileTypes.FileTypeManager;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+
 import javax.swing.*;
 import javax.swing.tree.DefaultTreeCellRenderer;
 import javax.swing.tree.DefaultTreeModel;
@@ -161,8 +167,9 @@ public class AutoSaveWindow extends DialogWrapper {
     // 当文件被选中时，加载并显示文件内容
     private void onFileSelected(AutoSaveFunctional.CustomTreeNode selectedNode) {
         if (selectedVersionHash != null) {
+            String fileName = selectedNode.getName();
             String fileContent = ASF.getFileContentForVersionAndPath(selectedVersionHash, selectedNode); // 获取文件内容
-            textPanel.setFileContent(fileContent); // 显示文件内容
+            textPanel.setFileContent(fileContent, fileName); // 显示文件内容
         }
     }
 }
@@ -325,6 +332,14 @@ class VersionItem extends JPanel {
         this.versionHash = versionHash; // 初始化版本哈希
         isSelected = false;
 
+        // 设置固定大小为200x80
+        setPreferredSize(new Dimension(190, 80));
+        setMaximumSize(new Dimension(190, 80));
+        setMinimumSize(new Dimension(190, 80));
+
+        // 保证背景填充色生效
+        setOpaque(true);
+
         setLayout(new BoxLayout(this, BoxLayout.Y_AXIS));
 
         JLabel nameLabel = new JLabel(name);
@@ -346,6 +361,9 @@ class VersionItem extends JPanel {
             public void mouseEntered(MouseEvent e) {
                 if (!isSelected)
                     setBackground(JBColor.gray);
+
+                // 设置鼠标悬停显示版本的tag
+                setToolTipText("Version tag: " +name);
             }
 
             @Override
@@ -438,33 +456,42 @@ class CustomTreeCellRender extends DefaultTreeCellRenderer {
 }
 
 class TextPanel extends JPanel {
-    private JTextPane textPane;
+    private Editor editor;  // 使用 IntelliJ 的 Editor 而不是 JTextPane
 
     public TextPanel() {
         setPreferredSize(new Dimension(550, 600));
-
         setLayout(new BorderLayout());
-
-        // 创建 JTextPane 并设置为只读
-        textPane = new JTextPane();
-        textPane.setEditable(false); // 设置为只读
-        textPane.setContentType("text/plain"); // 设置文本类型
-
-        textPane.setFont(UIManager.getFont("Editor.Font"));
-        textPane.setBackground(UIManager.getColor("Editor.background")); // 深色背景
-        textPane.setForeground(Color.lightGray); // 白色文本
-
-        add(new JBScrollPane(textPane), BorderLayout.CENTER);
     }
 
     // 设置文件内容的方法
-    public void setFileContent(String content) {
-        textPane.setText(content);
+    public void setFileContent(String content, String extend) {
+        // 将 Windows 风格的换行符 (\r\n) 转换为 Unix 风格的换行符 (\n)
+        String normalizedContent = content.replace("\r\n", "\n");
+
+        // 获取编辑器工厂
+        EditorFactory editorFactory = EditorFactory.getInstance();
+        // 创建 Document 对象，用于存储代码
+        Document document = editorFactory.createDocument(normalizedContent);
+        // 获取要使用的文件类型 (例如 Java 文件)
+        FileType fileType = FileTypeManager.getInstance().getFileTypeByExtension("java");
+
+        // 创建带有语法高亮的 Editor
+        if (editor != null) {
+            // 如果 Editor 已存在，则先释放旧的 Editor
+            editorFactory.releaseEditor(editor);
+        }
+        editor = editorFactory.createEditor(document, null, fileType, true);
+
+        // 将 Editor 添加到面板中
+        removeAll();  // 清除之前的组件
+        add(new JBScrollPane(editor.getComponent()), BorderLayout.CENTER);
+        revalidate();
+        repaint();
     }
 
     public void refresh(){
         setLayout(new BorderLayout());
-        textPane = new JTextPane();
+        JTextPane textPane = new JTextPane();
         textPane.setText(null);
 
         add(new JBScrollPane(textPane), BorderLayout.CENTER);

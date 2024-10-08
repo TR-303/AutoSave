@@ -105,7 +105,8 @@ public class AutoSaveFunctional {
             for (String child : children)
                 if (!child.equals(".autosave")) {
                     String[] parts = child.split("\0");
-                    objectNode.add(getTreeNodeByVersionHash(parts[0].trim()));
+                    if (parts.length == 3)
+                        objectNode.add(getTreeNodeByVersionHash(parts[0].trim()));
                 }
         }
 
