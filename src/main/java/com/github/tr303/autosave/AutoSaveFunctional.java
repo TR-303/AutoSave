@@ -113,6 +113,32 @@ public class AutoSaveFunctional {
         return objectNode;
     }
 
+//    // 获得某个版本的某个文件内容String
+//    public String getFileContentForVersionAndPath(String versionHash, CustomTreeNode target) {
+//        ArrayList<String> path = new ArrayList<>();
+//        CustomTreeNode node = target;
+//        while (node.getParent() != null) {
+//            path.add(0, node.getName());
+//            node = (CustomTreeNode) node.getParent();
+//        }
+//
+//        // 递归查找文件哈希
+//        String hash = findFileHashInVersion(versionHash, path);
+//
+//        if (hash == null) {
+//            // 如果当前版本没有找到该文件，回退到前一个版本
+//            hash = findFileInPreviousVersions(versionHash, path);
+//        }
+//
+//        if (hash != null) {
+//            // 获取文件内容并返回
+//            String fileContent = ASD.getObjectContentByHash(hash);
+//            return fileContent.substring(fileContent.indexOf('\0') + 1); // 返回文件内容部分
+//        }
+//
+//        return null; // 如果未找到文件，返回 null
+//    }
+
     // 获得某个版本的某个文件内容String
     public String getFileContentForVersionAndPath(String versionHash, CustomTreeNode target) {
         ArrayList<String> path = new ArrayList<>();
@@ -122,76 +148,76 @@ public class AutoSaveFunctional {
             node = (CustomTreeNode) node.getParent();
         }
 
-        // 递归查找文件哈希
-        String hash = findFileHashInVersion(versionHash, path);
-
-        if (hash == null) {
-            // 如果当前版本没有找到该文件，回退到前一个版本
-            hash = findFileInPreviousVersions(versionHash, path);
-        }
-
-        if (hash != null) {
-            // 获取文件内容并返回
-            String fileContent = ASD.getObjectContentByHash(hash);
-            return fileContent.substring(fileContent.indexOf('\0') + 1); // 返回文件内容部分
-        }
-
-        return null; // 如果未找到文件，返回 null
-    }
-
-    private String findFileHashInVersion(String versionHash, ArrayList<String> path) {
         String hash = versionHash;
         while (!path.isEmpty()) {
             String objectContent = ASD.getObjectContentByHash(hash);
-            if (objectContent == null) {
-                return null; // 如果当前哈希无效，返回 null
-            }
-
             String[] entries = objectContent.substring(objectContent.indexOf('\0') + 1).split("\n");
-            boolean found = false;
-
-            // 遍历目录条目，查找路径中对应的文件或目录
             for (String entry : entries) {
                 String[] parts = entry.split("\0");
                 if (parts[2].equals(path.get(0)) && (path.size() == 1 || parts[1].equals("DIR")) && (path.size() > 1 || parts[1].equals("FIL"))) {
-                    path.remove(0); // 匹配成功，移除当前路径部分
-                    hash = parts[0]; // 更新哈希值
-                    found = true;
+                    path.remove(0);
+                    hash = parts[0];
                     break;
                 }
             }
-
-            if (!found) {
-                return null; // 如果未找到匹配项，返回 null
-            }
         }
-        return hash; // 返回最终的文件哈希
+
+        String fileContent = ASD.getObjectContentByHash(hash);
+        return fileContent.substring(fileContent.indexOf('\0') + 1);
     }
-
-    private String findFileInPreviousVersions(String versionHash, ArrayList<String> path) {
-        ArrayList<AutoSaveFunctional.VersionInfo> versionList = getVersionList();
-
-        // 获取当前版本的索引
-        int currentVersionIndex = -1;
-        for (int i = 0; i < versionList.size(); i++) {
-            if (versionList.get(i).rootObject.equals(versionHash)) {
-                currentVersionIndex = i;
-                break;
-            }
-        }
-
-        // 回退到前一个版本查找
-        for (int i = currentVersionIndex + 1; i < versionList.size(); i++) {
-            String previousVersionHash = versionList.get(i).rootObject;
-            String fileHash = findFileHashInVersion(previousVersionHash, new ArrayList<>(path)); // 使用新的路径副本
-            if (fileHash != null) {
-                return fileHash; // 找到文件时返回其哈希
-            }
-        }
-
-        return null; // 未找到文件内容
-    }
-
+//
+//    private String findFileHashInVersion(String versionHash, ArrayList<String> path) {
+//        String hash = versionHash;
+//        while (!path.isEmpty()) {
+//            String objectContent = ASD.getObjectContentByHash(hash);
+//            if (objectContent == null) {
+//                return null; // 如果当前哈希无效，返回 null
+//            }
+//
+//            String[] entries = objectContent.substring(objectContent.indexOf('\0') + 1).split("\n");
+//            boolean found = false;
+//
+//            // 遍历目录条目，查找路径中对应的文件或目录
+//            for (String entry : entries) {
+//                String[] parts = entry.split("\0");
+//                if (parts[2].equals(path.get(0)) && (path.size() == 1 || parts[1].equals("DIR")) && (path.size() > 1 || parts[1].equals("FIL"))) {
+//                    path.remove(0); // 匹配成功，移除当前路径部分
+//                    hash = parts[0]; // 更新哈希值
+//                    found = true;
+//                    break;
+//                }
+//            }
+//
+//            if (!found) {
+//                return null; // 如果未找到匹配项，返回 null
+//            }
+//        }
+//        return hash; // 返回最终的文件哈希
+//    }
+//
+//    private String findFileInPreviousVersions(String versionHash, ArrayList<String> path) {
+//        ArrayList<AutoSaveFunctional.VersionInfo> versionList = getVersionList();
+//
+//        // 获取当前版本的索引
+//        int currentVersionIndex = -1;
+//        for (int i = 0; i < versionList.size(); i++) {
+//            if (versionList.get(i).rootObject.equals(versionHash)) {
+//                currentVersionIndex = i;
+//                break;
+//            }
+//        }
+//
+//        // 回退到前一个版本查找
+//        for (int i = currentVersionIndex + 1; i < versionList.size(); i++) {
+//            String previousVersionHash = versionList.get(i).rootObject;
+//            String fileHash = findFileHashInVersion(previousVersionHash, new ArrayList<>(path)); // 使用新的路径副本
+//            if (fileHash != null) {
+//                return fileHash; // 找到文件时返回其哈希
+//            }
+//        }
+//
+//        return null; // 未找到文件内容
+//    }
 
     public static String getCurrentTimeFormatted() {
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH-mm-ss");
